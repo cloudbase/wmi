@@ -1,5 +1,5 @@
-import wmi
 from distutils.core import setup
+import wmi
 
 classifiers = [
   'Development Status :: 5 - Production/Stable',
@@ -14,12 +14,14 @@ classifiers = [
 
 setup (
   name = "WMI",
-  version = wmi.__VERSION__,
+  version = wmi.__version__,
   description = "Windows Management Instrumentation",
   author = "Tim Golden",
   author_email = "mail@timgolden.me.uk",
   url = "http://timgolden.me.uk/python/wmi.html",
   license = "http://www.opensource.org/licenses/mit-license.php",
-  py_modules = ["wmi"]
+  py_modules = ["wmi"],
+  scripts = ["wmitest.py", "wmiweb.py", "wmitest.cmd", "wmitest.master.ini"],
+  data_files = ["readme.txt", "changelog.txt"]
 )
 
