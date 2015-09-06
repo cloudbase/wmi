@@ -86,6 +86,8 @@ import re
 import struct
 import warnings
 
+import pythoncom
+
 from win32com.client import GetObject, Dispatch
 import pywintypes
 
@@ -155,7 +157,7 @@ class ProvideConstants (object):
      raise AttributeError (name)
     return result[1].value
 
-obj = GetObject ("winmgmts:")
+obj = Dispatch("WbemScripting.SWbemLocator",  clsctx = pythoncom.CLSCTX_INPROC_SERVER)
 ProvideConstants (obj)
 
 wbemErrInvalidQuery = obj._constants.wbemErrInvalidQuery
@@ -787,7 +789,9 @@ class _wmi_class (_wmi_object):
     else:
       class_moniker = wmi_class.Path_.DisplayName
       winmgmts, namespace_moniker, class_name = class_moniker.split (":")
-      namespace = _wmi_namespace (GetObject (winmgmts + ":" + namespace_moniker), False)
+      loc = Dispatch('WbemScripting.SWbemLocator')
+      svc = loc.ConnectServer(".", namespace_moniker)
+      namespace = _wmi_namespace (svc, False)
       _set (self, "_namespace", namespace)
 
   def __getattr__ (self, attribute):
@@ -1212,6 +1216,19 @@ class _wmi_watcher:
     except pywintypes.com_error:
       handle_com_error ()
 
+def _parse_moniker(moniker):
+    server = '.'
+    namespace = None
+    path = None
+
+    m = re.match("(?:" + PROTOCOL + r")?//([^/]+)(/.*):(.*)", moniker)
+    if m:
+        server, namespace, path = m.groups()
+    else:
+        namespace = moniker
+
+    return (server, namespace, path)
+
 PROTOCOL = "winmgmts:"
 def connect (
   computer="",
@@ -1260,10 +1277,11 @@ def connect (
         obj = wmi
 
       elif moniker:
-        if not moniker.startswith (PROTOCOL):
-          moniker = PROTOCOL + moniker
-        obj = GetObject (moniker)
-
+        server, namespace, path = _parse_moniker(moniker)
+        loc = Dispatch('WbemScripting.SWbemLocator')
+        obj = loc.ConnectServer(server, namespace)
+        if path:
+            obj = obj.Get(path)
       else:
         if user:
           if privileges or suffix:
@@ -1291,7 +1309,8 @@ def connect (
             namespace=namespace,
             suffix=suffix
           )
-          obj = GetObject (moniker)
+          loc = Dispatch('WbemScripting.SWbemLocator')
+          obj = loc.ConnectServer(computer, namespace)
 
       wmi_type = get_wmi_type (obj)
 
